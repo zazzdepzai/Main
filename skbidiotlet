@@ -1,0 +1,618 @@
+--========================================================
+-- KiWar Hub | PvP Script Hub
+--========================================================
+
+--// Load VoidUI
+local success, library = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/raphaelmaboi/ui-libraries/main/VoidUi/source.lua"))()
+end)
+
+if not success or not library then
+    warn("❌ Không load được VoidUI!")
+    return
+end
+
+-- Watermark
+local watermark = library:Watermark("KiWar | PvP Hub | v1")
+
+-- Main Window
+local main = library:Load{
+    Name = "KiWar Hub - PvP",
+    SizeX = 400,
+    SizeY = 255,
+    Theme = "Midnight",
+    Extension = "json",
+    Folder = "Kiwar Hub"
+}
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Camera = workspace.CurrentCamera
+
+--========================================================
+-- Combat
+--========================================================
+local combatTab = main:Tab("Combat")
+local combat = combatTab:Section{Name = "PvP Combat", Side = "Left"}
+
+-- AimLock Config
+local Aimlock = {
+    Loaded = false,
+    Enabled = false,
+    TeamCheck = true,
+    Keybind = Enum.UserInputType.MouseButton2, -- Chuột phải
+    Smoothness = 0.15,
+    Connection = nil
+}
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+-- Hàm tìm player gần nhất
+local function GetClosestPlayer()
+    local closest = nil
+    local shortest = math.huge
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Head") then
+            if Aimlock.TeamCheck and plr.Team == LocalPlayer.Team then
+                continue
+            end
+            local head = plr.Character.Head
+            local pos, vis = Camera:WorldToViewportPoint(head.Position)
+            if vis then
+                local mousePos = UserInputService:GetMouseLocation()
+                local dist = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(pos.X, pos.Y)).Magnitude
+                if dist < shortest then
+                    shortest = dist
+                    closest = head
+                end
+            end
+        end
+    end
+    return closest
+end
+
+-- Hàm load aimlock
+function Aimlock.Load()
+    if Aimlock.Loaded then return end
+    Aimlock.Loaded = true
+
+    local aiming = false
+
+    -- Keybind giữ aim
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if not gpe and input.UserInputType == Aimlock.Keybind then
+            aiming = true
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Aimlock.Keybind then
+            aiming = false
+        end
+    end)
+
+    -- Vòng lặp aim
+    Aimlock.Connection = RunService.RenderStepped:Connect(function()
+        if Aimlock.Enabled and aiming then
+            local target = GetClosestPlayer()
+            if target then
+                local lookVector = (target.Position - Camera.CFrame.Position).Unit
+                local newCFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + lookVector)
+                Camera.CFrame = Camera.CFrame:Lerp(newCFrame, Aimlock.Smoothness)
+            end
+        end
+    end)
+end
+
+-- Hàm unload aimlock
+function Aimlock.Unload()
+    if Aimlock.Loaded and Aimlock.Connection then
+        Aimlock.Connection:Disconnect()
+        Aimlock.Loaded = false
+    end
+end
+
+-- Combat UI Toggle
+combat:Toggle{
+    Name = "AimLock",
+    Flag = "AimLock",
+    Callback = function(state)
+        Aimlock.Enabled = state
+        if state then
+            if not Aimlock.Loaded then
+                Aimlock.Load()
+            end
+        else
+            Aimlock.Unload()
+        end
+    end
+}
+
+
+-- Silent Aim
+local SilentAim = {Enabled = false, TargetPart = "HumanoidRootPart", FOV = 200}
+combat:Toggle{
+    Name = "Silent Aim",
+    Flag = "SilentAim",
+    Callback = function(state) SilentAim.Enabled = state end
+}
+
+-- Fast Attack
+combat:Toggle{
+    Name = "Fast Attack",
+    Flag = "FastAttack",
+    Callback = function(state)
+        _G.FastAttack = state
+        if state then
+            task.spawn(function()
+                while _G.FastAttack do
+                    game:GetService("VirtualUser"):Button1Down(Vector2.new(), workspace.CurrentCamera.CFrame)
+                    task.wait(0.05)
+                end
+            end)
+        end
+    end
+}
+
+-- Auto Dodge
+combat:Toggle{
+    Name = "Auto Dodge",
+    Flag = "AutoDodge",
+    Callback = function(state)
+        _G.AutoDodge = state
+        if state then
+            task.spawn(function()
+                while _G.AutoDodge do
+                    local enemies = Players:GetPlayers()
+                    for _,plr in pairs(enemies) do
+                        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                            if (plr.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 20 then
+                                LocalPlayer.Character.HumanoidRootPart.CFrame *= CFrame.new(0,0,15)
+                            end
+                        end
+                    end
+                    task.wait(0.2)
+                end
+            end)
+        end
+    end
+}
+
+-- Auto Farm Bounty
+combat:Toggle{
+    Name = "Auto Farm Bounty",
+    Flag = "AutoBounty",
+    Callback = function(state)
+        _G.AutoBounty = state
+        if state then
+            task.spawn(function()
+                while _G.AutoBounty do
+                    local target = nil
+                    local dist = math.huge
+                    for _,plr in pairs(Players:GetPlayers()) do
+                        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                            local d = (plr.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                            if d < dist then
+                                dist = d
+                                target = plr
+                            end
+                        end
+                    end
+                    if target then
+                        local hrp = LocalPlayer.Character.HumanoidRootPart
+                        local pos = target.Character.HumanoidRootPart.Position
+                        hrp.CFrame = CFrame.new(pos + Vector3.new(10,10,0), pos)
+                        game:GetService("VirtualUser"):Button1Down(Vector2.new(), Camera.CFrame)
+                    end
+                    task.wait(0.2)
+                end
+            end)
+        end
+    end
+}
+
+-- Aim Kill
+combat:Toggle{
+    Name = "Aim Kill",
+    Flag = "AimKill",
+    Callback = function(state)
+        _G.AimKill = state
+        if state then
+            task.spawn(function()
+                while _G.AimKill do
+                    local mouse = LocalPlayer:GetMouse()
+                    local target = mouse.Target and Players:GetPlayerFromCharacter(mouse.Target.Parent)
+                    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
+                        game:GetService("VirtualUser"):Button1Down(Vector2.new(), Camera.CFrame)
+                    end
+                    task.wait(0.2)
+                end
+            end)
+        end
+    end
+}
+
+-- Fly Kill
+combat:Toggle{
+    Name = "Fly Kill",
+    Flag = "FlyKill",
+    Callback = function(state)
+        _G.FlyKill = state
+        if state then
+            task.spawn(function()
+                while _G.FlyKill do
+                    local target = nil
+                    for _,plr in pairs(Players:GetPlayers()) do
+                        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                            target = plr
+                            break
+                        end
+                    end
+                    if target then
+                        local hrp = LocalPlayer.Character.HumanoidRootPart
+                        hrp.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0,15,0)
+                        game:GetService("VirtualUser"):Button1Down(Vector2.new(), Camera.CFrame)
+                    end
+                    task.wait(0.3)
+                end
+            end)
+        end
+    end
+}
+
+--========================================================
+-- ESP
+--========================================================
+--========================================================
+-- ESP Tab
+--========================================================
+local visualsTab = main:Tab("Visuals")
+local visuals = visualsTab:Section{Name = "ESP Options", Side = "Left"}
+-- Settings chung
+local Settings = {
+    TeamCheck = true, -- ✅ Bật teamcheck
+    EnemyColor = Color3.fromRGB(255, 0, 0),
+    TeamColor  = Color3.fromRGB(0, 255, 0)
+}
+
+-- ESP NameTag với TeamCheck
+local function createNameTag(plr)
+    if plr == LocalPlayer then return end
+    local head = plr.Character and plr.Character:FindFirstChild("Head")
+    if not head then return end
+
+    if not head:FindFirstChild("NameTag") then
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "NameTag"
+        billboard.Adornee = head
+        billboard.Size = UDim2.new(0,200,0,50)
+        billboard.StudsOffset = Vector3.new(0,3,0)
+        billboard.AlwaysOnTop = true
+
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1,0,1,0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.TextStrokeTransparency = 0
+        nameLabel.Text = plr.Name
+        nameLabel.TextColor3 = Settings.EnemyColor
+        nameLabel.Parent = billboard
+
+        billboard.Parent = head
+
+        -- Update loop cho TeamCheck
+        task.spawn(function()
+            while billboard.Parent do
+                task.wait(0.5)
+                if Settings.TeamCheck then
+                    if plr.TeamColor == LocalPlayer.TeamColor then
+                        nameLabel.TextColor3 = Settings.TeamColor
+                    else
+                        nameLabel.TextColor3 = Settings.EnemyColor
+                    end
+                end
+            end
+        end)
+    end
+end
+
+-- Gắn vào tất cả player
+for _,plr in ipairs(Players:GetPlayers()) do
+    if plr ~= LocalPlayer then
+        createNameTag(plr)
+    end
+end
+
+Players.PlayerAdded:Connect(createNameTag)
+-- Toggle Player ESP
+visuals:Toggle{
+    Name = "Player ESP (Box)",
+    Flag = "PlayerESP",
+    Callback = function(state)
+        getgenv().espEnabled = state
+        if state then
+            loadstring(game:HttpGet("https://pastebin.com/raw/CaniU7Wc"))() -- box esp
+        end
+    end
+}
+
+-- Toggle Nametag ESP
+visuals:Toggle{
+    Name = "Nametag ESP",
+    Flag = "NametagESP",
+    Callback = function(state)
+        getgenv().nametagEnabled = state
+        if state then
+            for _,plr in pairs(game.Players:GetPlayers()) do
+                if plr ~= game.Players.LocalPlayer then
+                    local Billboard = Instance.new("BillboardGui")
+                    Billboard.Name = "Nametag"
+                    Billboard.Size = UDim2.new(0,200,0,50)
+                    Billboard.StudsOffset = Vector3.new(0,3,0)
+                    Billboard.AlwaysOnTop = true
+
+                    local Text = Instance.new("TextLabel", Billboard)
+                    Text.Size = UDim2.new(1,0,1,0)
+                    Text.BackgroundTransparency = 1
+                    Text.TextColor3 = Color3.fromRGB(255,255,255)
+                    Text.TextStrokeTransparency = 0
+                    Text.Font = Enum.Font.SourceSansBold
+                    Text.TextSize = 14
+                    Text.Text = plr.Name
+
+                    plr.CharacterAdded:Connect(function(char)
+                        Billboard.Parent = char:WaitForChild("Head")
+                    end)
+                    if plr.Character and plr.Character:FindFirstChild("Head") then
+                        Billboard.Parent = plr.Character.Head
+                    end
+                end
+            end
+        else
+            for _,plr in pairs(game.Players:GetPlayers()) do
+                if plr.Character and plr.Character:FindFirstChild("Head") then
+                    if plr.Character.Head:FindFirstChild("Nametag") then
+                        plr.Character.Head.Nametag:Destroy()
+                    end
+                end
+            end
+        end
+    end
+}
+
+-- Toggle Tracers
+visuals:Toggle{
+    Name = "Tracers",
+    Flag = "Tracers",
+    Callback = function(state)
+        getgenv().tracersEnabled = state
+        if state then
+            local camera = workspace.CurrentCamera
+            local RunService = game:GetService("RunService")
+
+            RunService.RenderStepped:Connect(function()
+                if not getgenv().tracersEnabled then return end
+                for _,plr in pairs(game.Players:GetPlayers()) do
+                    if plr ~= game.Players.LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                        local hrp = plr.Character.HumanoidRootPart
+                        local pos, vis = camera:WorldToViewportPoint(hrp.Position)
+                        if vis then
+                            local line = Drawing.new("Line")
+                            line.From = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y)
+                            line.To = Vector2.new(pos.X, pos.Y)
+                            line.Color = Color3.fromRGB(255,0,0)
+                            line.Thickness = 1
+                            line.Transparency = 1
+                            line.Visible = true
+                            task.delay(0.01, function() line:Remove() end)
+                        end
+                    end
+                end
+            end)
+        end
+    end
+}
+
+visuals:Toggle{
+    Name = "Radar",
+    Flag = "Radar",
+    Callback = function(state)
+        if state then
+            loadstring(game:HttpGet("https://pastebin.com/raw/4v6dLrjv"))() -- radar system
+        end
+    end
+}
+-- Hàm chỉnh Hitbox
+local function expandHitbox(plr, state)
+    if plr == LocalPlayer then return end
+    local char = plr.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local hrp = char.HumanoidRootPart
+    if state then
+        hrp.Size = hitboxSize
+        hrp.Transparency = 0.7
+        hrp.BrickColor = BrickColor.new("Bright red")
+        hrp.Material = Enum.Material.Neon
+        hrp.CanCollide = false
+    else
+        hrp.Size = Vector3.new(2,2,1) -- reset mặc định
+        hrp.Transparency = 1
+    end
+end
+
+visuals:Toggle{
+    Name = "Hitbox Expander",
+    Flag = "HitboxESP",
+    Callback = function(state)
+        hitboxEnabled = state
+        for _,plr in ipairs(Players:GetPlayers()) do
+            expandHitbox(plr, state)
+        end
+        if state then
+            Players.PlayerAdded:Connect(function(plr)
+                plr.CharacterAdded:Connect(function()
+                    task.wait(1)
+                    expandHitbox(plr, true)
+                end)
+            end)
+        end
+    end
+}
+
+visuals:Slider{
+    Name = "Hitbox Size",
+    Text = "[value]",
+    Min = 5,
+    Max = 50,
+    Float = 1,
+    Flag = "HitboxSize",
+    Callback = function(value)
+        hitboxSize = Vector3.new(value,value,value)
+        if hitboxEnabled then
+            for _,plr in ipairs(Players:GetPlayers()) do
+                expandHitbox(plr, true)
+            end
+        end
+    end
+}
+
+visuals:Toggle{
+    Name = "Player ESP",
+    Flag = "PlayerESP",
+    Callback = function(state)
+        _G.ESP = state
+        if state then
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/zxciaz/esp/main/boxesp.lua"))()
+        end
+    end
+}
+
+visuals:Toggle{
+    Name = "Fruit ESP",
+    Flag = "FruitESP",
+    Callback = function(state)
+        _G.FruitESP = state
+        if state then
+            task.spawn(function()
+                while _G.FruitESP do
+                    for _,v in pairs(workspace:GetChildren()) do
+                        if v:IsA("Tool") and string.find(v.Name,"Fruit") then
+                            v.Handle.BrickColor = BrickColor.new("Lime green")
+                            v.Handle.Material = Enum.Material.Neon
+                        end
+                    end
+                    task.wait(2)
+                end
+            end)
+        end
+    end
+}
+--========================================================
+-- Movement
+--========================================================
+local moveTab = main:Tab("Movement")
+local move = moveTab:Section{Name = "Movement", Side = "Left"}
+
+move:Slider{
+    Name = "WalkSpeed",
+    Text = "[value]",
+    Min = 16,
+    Max = 200,
+    Float = 1,
+    Flag = "WalkSpeed",
+    Callback = function(value)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = value
+        end
+    end
+}
+
+move:Toggle{
+    Name = "No Dash Cooldown",
+    Flag = "NoDashCooldown",
+    Callback = function(state)
+        if state then
+            for _,v in pairs(getgc(true)) do
+                if typeof(v)=="function" and debug.getinfo(v).name=="DashCooldown" then
+                    hookfunction(v,function() return 0 end)
+                end
+            end
+        end
+    end
+}
+
+--========================================================
+-- Misc
+--========================================================
+local miscTab = main:Tab("Misc")
+local misc = miscTab:Section{Name = "Utilities", Side = "Left"}
+
+-- Anti-AFK
+misc:Toggle{
+    Name = "Anti AFK",
+    Flag = "AntiAFK",
+    Callback = function(state)
+        if state then
+            local vu = game:GetService("VirtualUser")
+            game:GetService("Players").LocalPlayer.Idled:Connect(function()
+                vu:CaptureController()
+                vu:ClickButton2(Vector2.new())
+            end)
+            warn("[Misc] Anti-AFK Enabled")
+        end
+    end
+}
+
+-- Rejoin Server
+misc:Button{
+    Name = "Rejoin Server",
+    Callback = function()
+        local ts = game:GetService("TeleportService")
+        local p = game:GetService("Players").LocalPlayer
+        ts:Teleport(game.PlaceId, p)
+    end
+}
+
+-- Server Hop (random server khác)
+misc:Button{
+    Name = "Server Hop",
+    Callback = function()
+        local Http = game:GetService("HttpService")
+        local TPS = game:GetService("TeleportService")
+        local Api = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
+
+        local function ListServers(cursor)
+            local Raw = game:HttpGet(Api .. ((cursor and "&cursor="..cursor) or ""))
+            return Http:JSONDecode(Raw)
+        end
+
+        local Server, Next
+        repeat
+            local Servers = ListServers(Next)
+            Server = Servers.data[math.random(1, #Servers.data)]
+            Next = Servers.nextPageCursor
+        until Server and Server.playing < Server.maxPlayers
+
+        if Server then
+            TPS:TeleportToPlaceInstance(game.PlaceId, Server.id, game.Players.LocalPlayer)
+        else
+            warn("[Misc] Không tìm thấy server khác")
+        end
+    end
+}
+local AkaliNotif = loadstring(game:HttpGet("https://raw.githubusercontent.com/Kinlei/Dynissimo/main/Scripts/AkaliNotif.lua"))();
+local Notify = AkaliNotif.Notify;
+
+wait(1);
+
+Notify({
+Description = "Join Sever discord https://discord.gg/rJkrxfuG";
+Title = "Kiwar Hub | 1.2";
+Duration = 5;
+});
+
