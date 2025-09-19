@@ -1,10 +1,6 @@
 -- 🌀 Wave UI Lib
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/bloodball/-back-ups-for-libs/main/wave"))()
 local Main = library:Main()
-
--------------------------------------------------
--- 📂 Tabs
--------------------------------------------------
 local CombatTab = Main:Tab("Combat")
 local VisualTab = Main:Tab("Visuals")
 local MovementTab = Main:Tab("Movement")
@@ -15,33 +11,129 @@ local MiscTab = Main:Tab("Misc")
 -------------------------------------------------
 local Combat = CombatTab:Section("Combat")
 
-Combat:Item("toggle", "Aimlock", function(v) _G.Aimlock = v end)
-Combat:Item("slider", "Aim FOV", function(v) _G.FOVSize = v end, {min = 50, max = 500, default = 150})
+local AimlockOn = false
+Combat:Toggle({
+    Name = "Aimlock",
+    Flag = "Aimlock",
+    Callback = function(state)
+        AimlockOn = state
+    end
+})
 
-Combat:Item("toggle", "TriggerBot", function(v) _G.TriggerBot = v end)
-Combat:Item("toggle", "FastReload", function(v) _G.FastReload = v end)
-Combat:Item("toggle", "AutoReload", function(v) _G.AutoReload = v end)
-Combat:Item("toggle", "Godmode (Fake)", function(v) _G.Godmode = v end)
+local TriggerBotOn = false
+Combat:Toggle({
+    Name = "TriggerBot",
+    Flag = "TriggerBot",
+    Callback = function(state)
+        TriggerBotOn = state
+    end
+})
+
+local FastReloadOn = false
+Combat:Toggle({
+    Name = "FastReload",
+    Flag = "FastReload",
+    Callback = function(state)
+        FastReloadOn = state
+    end
+})
+
+local AutoReloadOn = false
+Combat:Toggle({
+    Name = "AutoReload",
+    Flag = "AutoReload",
+    Callback = function(state)
+        AutoReloadOn = state
+    end
+})
+
+local GodmodeOn = false
+Combat:Toggle({
+    Name = "Godmode (Fake)",
+    Flag = "Godmode",
+    Callback = function(state)
+        GodmodeOn = state
+    end
+})
 
 -------------------------------------------------
 -- 👁 Visual Section
 -------------------------------------------------
 local Visual = VisualTab:Section("ESP / FOV")
 
-Visual:Item("toggle", "ESP", function(v) _G.ESP = v end)
-Visual:Item("toggle", "FOV Circle", function(v) _G.ShowFOV = v end)
-Visual:Item("slider", "FOV Size", function(v) _G.FOVSize = v end, {min = 50, max = 500, default = 150})
+local ESPOn = false
+Visual:Toggle({
+    Name = "ESP",
+    Flag = "ESP",
+    Callback = function(state)
+        ESPOn = state
+    end
+})
+
+local ShowFOV = false
+local FOVSize = 150
+Visual:Toggle({
+    Name = "FOV Circle",
+    Flag = "FOVCircle",
+    Callback = function(state)
+        ShowFOV = state
+    end
+})
+Visual:Slider({
+    Name = "FOV Size",
+    Flag = "FOVSize",
+    Min = 50,
+    Max = 500,
+    Value = 150,
+    Callback = function(v)
+        FOVSize = v
+    end
+})
 
 -------------------------------------------------
 -- 🏃 Movement Section
 -------------------------------------------------
 local Movement = MovementTab:Section("Movement")
 
-Movement:Item("toggle", "SpeedHack", function(v) _G.SpeedHack = v end)
-Movement:Item("slider", "Speed", function(v) _G.SpeedValue = v end, {min = 16, max = 200, default = 50})
+local SpeedHackOn = false
+local SpeedValue = 50
+Movement:Toggle({
+    Name = "SpeedHack",
+    Flag = "SpeedHack",
+    Callback = function(state)
+        SpeedHackOn = state
+    end
+})
+Movement:Slider({
+    Name = "Speed",
+    Flag = "SpeedValue",
+    Min = 16,
+    Max = 200,
+    Value = 50,
+    Callback = function(v)
+        SpeedValue = v
+    end
+})
 
-Movement:Item("toggle", "HighJump", function(v) _G.HighJump = v end)
-Movement:Item("slider", "JumpPower", function(v) _G.JumpValue = v end, {min = 50, max = 500, default = 100})
+local HighJumpOn = false
+local JumpValue = 100
+Movement:Toggle({
+    Name = "HighJump",
+    Flag = "HighJump",
+    Callback = function(state)
+        HighJumpOn = state
+    end
+})
+Movement:Slider({
+    Name = "JumpPower",
+    Flag = "JumpValue",
+    Min = 50,
+    Max = 500,
+    Value = 100,
+    Callback = function(v)
+        JumpValue = v
+    end
+})
 
 -------------------------------------------------
 -- 🧠 Script Logic
@@ -58,9 +150,9 @@ fovCircle.Color = Color3.fromRGB(0, 255, 0)
 fovCircle.Thickness = 1
 fovCircle.NumSides = 100
 fovCircle.Filled = false
-fovCircle.Radius = _G.FOVSize or 150
+fovCircle.Radius = FOVSize
 
--- 🎯 Lấy target gần nhất
+-- Hàm tìm target gần nhất
 local function getClosestToCursor()
     local closest, dist = nil, math.huge
     for _, plr in pairs(Players:GetPlayers()) do
@@ -68,7 +160,7 @@ local function getClosestToCursor()
             local pos, onscreen = Camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position)
             if onscreen then
                 local mag = (Vector2.new(pos.X, pos.Y) - UserInputService:GetMouseLocation()).Magnitude
-                if mag < dist and mag <= (_G.FOVSize or 150) then
+                if mag < dist and mag <= FOVSize then
                     closest, dist = plr, mag
                 end
             end
@@ -77,7 +169,7 @@ local function getClosestToCursor()
     return closest
 end
 
--- 🔴 ESP Highlight
+-- ESP Highlight
 local function applyESP(player)
     if player.Character and not player.Character:FindFirstChild("ESP_Highlight") then
         local hl = Instance.new("Highlight")
@@ -88,19 +180,12 @@ local function applyESP(player)
     end
 end
 
-Players.PlayerAdded:Connect(function(plr)
-    plr.CharacterAdded:Connect(function()
-        task.wait(1)
-        if _G.ESP then applyESP(plr) end
-    end)
-end)
-
 -------------------------------------------------
 -- 🔄 Main Loop
 -------------------------------------------------
 RunService.RenderStepped:Connect(function()
     -- ESP
-    if _G.ESP then
+    if ESPOn then
         for _, plr in pairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer then
                 applyESP(plr)
@@ -117,12 +202,12 @@ RunService.RenderStepped:Connect(function()
     -- Speed + Jump
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        hum.WalkSpeed = _G.SpeedHack and (_G.SpeedValue or 50) or 16
-        hum.JumpPower = _G.HighJump and (_G.JumpValue or 100) or 50
+        hum.WalkSpeed = SpeedHackOn and SpeedValue or 16
+        hum.JumpPower = HighJumpOn and JumpValue or 50
     end
 
     -- Aimlock
-    if _G.Aimlock then
+    if AimlockOn then
         local target = getClosestToCursor()
         if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.HumanoidRootPart.Position)
@@ -130,7 +215,7 @@ RunService.RenderStepped:Connect(function()
     end
 
     -- TriggerBot
-    if _G.TriggerBot then
+    if TriggerBotOn then
         local target = getClosestToCursor()
         if target then
             mouse1press()
@@ -140,7 +225,7 @@ RunService.RenderStepped:Connect(function()
     end
 
     -- FastReload
-    if _G.FastReload and LocalPlayer.Character then
+    if FastReloadOn and LocalPlayer.Character then
         for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
             if tool:IsA("Tool") and tool:FindFirstChild("Ammo") then
                 tool.Ammo.Value = tool.Ammo.MaxValue
@@ -149,7 +234,7 @@ RunService.RenderStepped:Connect(function()
     end
 
     -- AutoReload
-    if _G.AutoReload and LocalPlayer.Character then
+    if AutoReloadOn and LocalPlayer.Character then
         for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
             if tool:IsA("Tool") and tool:FindFirstChild("Ammo") and tool.Ammo.Value <= 0 then
                 tool.Ammo.Value = tool.Ammo.MaxValue
@@ -158,80 +243,13 @@ RunService.RenderStepped:Connect(function()
     end
 
     -- Godmode
-    if _G.Godmode and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").Health = LocalPlayer.Character:FindFirstChildOfClass("Humanoid").MaxHealth
+    if GodmodeOn and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").Health =
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").MaxHealth
     end
 
     -- FOV Circle update
-    fovCircle.Visible = _G.ShowFOV
+    fovCircle.Visible = ShowFOV
     fovCircle.Position = UserInputService:GetMouseLocation()
-    fovCircle.Radius = _G.FOVSize or 150
-end)
-
--------------------------------------------------
--- ⚙️ Misc Section
--------------------------------------------------
-local Misc = MiscTab:Section("Settings / Misc")
-
--- Anti AFK
-Misc:Item("toggle", "Anti-AFK", function(v)
-    _G.AntiAFK = v
-end)
-
--- UI Toggle Key
-Misc:Item("textbox", "UI Keybind", function(v)
-    _G.ToggleKey = v
-end, {Placeholder = "F4"})
-
--- Rejoin
-Misc:Item("button", "Rejoin Server", function()
-    local ts = game:GetService("TeleportService")
-    local p = game:GetService("Players").LocalPlayer
-    ts:Teleport(game.PlaceId, p)
-end)
-
--- Server Hop
-Misc:Item("button", "Server Hop", function()
-    local HttpService = game:GetService("HttpService")
-    local TeleportService = game:GetService("TeleportService")
-    local servers = {}
-    local req = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")
-    local data = HttpService:JSONDecode(req)
-    for _, s in pairs(data.data) do
-        if s.playing < s.maxPlayers then
-            table.insert(servers, s.id)
-        end
-    end
-    if #servers > 0 then
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1,#servers)], game.Players.LocalPlayer)
-    end
-end)
-
--- Reset Character
-Misc:Item("button", "Reset Character", function()
-    local plr = game.Players.LocalPlayer
-    if plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") then
-        plr.Character:FindFirstChildOfClass("Humanoid").Health = 0
-    end
-end)
-
--------------------------------------------------
--- 🔄 Anti-AFK Handler
--------------------------------------------------
-game:GetService("Players").LocalPlayer.Idled:Connect(function()
-    if _G.AntiAFK then
-        game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-    end
-end)
-
--------------------------------------------------
--- 🔄 UI Toggle Key Handler
--------------------------------------------------
-game:GetService("UserInputService").InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if _G.ToggleKey and Enum.KeyCode[_G.ToggleKey] and input.KeyCode == Enum.KeyCode[_G.ToggleKey] then
-        library:ToggleUI()
-    end
+    fovCircle.Radius = FOVSize
 end)
