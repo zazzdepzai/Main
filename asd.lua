@@ -4,136 +4,60 @@ local Main = library:Main()
 local CombatTab = Main:Tab("Combat")
 local VisualTab = Main:Tab("Visuals")
 local MovementTab = Main:Tab("Movement")
-local MiscTab = Main:Tab("Misc")
+local MiscTab = Main:Tab("Misc") -- 🆕 Tab Misc
+
+-------------------------------------------------
+-- ⚙ FLAGS
+-------------------------------------------------
+local FLAGS = {
+    -- Combat
+    Aim_Enabled = false,
+    Aim_Smooth = 0.18,
+    Trigger_Enabled = false,
+    FR_Enabled = false,
+    AutoReload = false,
+    Godmode = false,
+    -- Visuals
+    ESP = false,
+    POV_Circle = false,
+    POV_FOV = 150,
+    -- Movement
+    SpeedHack = false,
+    SpeedValue = 50,
+    HighJump = false,
+    JumpValue = 100,
+    -- Misc
+    AntiAFK = false,
+    ToggleKey = Enum.KeyCode.F4
+}
 
 -------------------------------------------------
 -- ⚔️ Combat Section
 -------------------------------------------------
 local Combat = CombatTab:Section("Combat")
-
-local AimlockOn = false
-Combat:Toggle({
-    Name = "Aimlock",
-    Flag = "Aimlock",
-    Callback = function(state)
-        AimlockOn = state
-    end
-})
-
-local TriggerBotOn = false
-Combat:Toggle({
-    Name = "TriggerBot",
-    Flag = "TriggerBot",
-    Callback = function(state)
-        TriggerBotOn = state
-    end
-})
-
-local FastReloadOn = false
-Combat:Toggle({
-    Name = "FastReload",
-    Flag = "FastReload",
-    Callback = function(state)
-        FastReloadOn = state
-    end
-})
-
-local AutoReloadOn = false
-Combat:Toggle({
-    Name = "AutoReload",
-    Flag = "AutoReload",
-    Callback = function(state)
-        AutoReloadOn = state
-    end
-})
-
-local GodmodeOn = false
-Combat:Toggle({
-    Name = "Godmode (Fake)",
-    Flag = "Godmode",
-    Callback = function(state)
-        GodmodeOn = state
-    end
-})
+Combat:Item("toggle", "Aimlock", function(v) FLAGS.Aim_Enabled = v end)
+Combat:Item("slider", "Aim FOV", function(v) FLAGS.POV_FOV = v end, {min = 50, max = 500, default = FLAGS.POV_FOV})
+Combat:Item("toggle", "TriggerBot", function(v) FLAGS.Trigger_Enabled = v end)
+Combat:Item("toggle", "FastReload", function(v) FLAGS.FR_Enabled = v end)
+Combat:Item("toggle", "AutoReload", function(v) FLAGS.AutoReload = v end)
+Combat:Item("toggle", "Godmode (Fake)", function(v) FLAGS.Godmode = v end)
 
 -------------------------------------------------
 -- 👁 Visual Section
 -------------------------------------------------
 local Visual = VisualTab:Section("ESP / FOV")
-
-local ESPOn = false
-Visual:Toggle({
-    Name = "ESP",
-    Flag = "ESP",
-    Callback = function(state)
-        ESPOn = state
-    end
-})
-
-local ShowFOV = false
-local FOVSize = 150
-Visual:Toggle({
-    Name = "FOV Circle",
-    Flag = "FOVCircle",
-    Callback = function(state)
-        ShowFOV = state
-    end
-})
-Visual:Slider({
-    Name = "FOV Size",
-    Flag = "FOVSize",
-    Min = 50,
-    Max = 500,
-    Value = 150,
-    Callback = function(v)
-        FOVSize = v
-    end
-})
+Visual:Item("toggle", "ESP", function(v) FLAGS.ESP = v end)
+Visual:Item("toggle", "FOV Circle", function(v) FLAGS.POV_Circle = v end)
+Visual:Item("slider", "FOV Size", function(v) FLAGS.POV_FOV = v end, {min = 50, max = 500, default = FLAGS.POV_FOV})
 
 -------------------------------------------------
 -- 🏃 Movement Section
 -------------------------------------------------
 local Movement = MovementTab:Section("Movement")
-
-local SpeedHackOn = false
-local SpeedValue = 50
-Movement:Toggle({
-    Name = "SpeedHack",
-    Flag = "SpeedHack",
-    Callback = function(state)
-        SpeedHackOn = state
-    end
-})
-Movement:Slider({
-    Name = "Speed",
-    Flag = "SpeedValue",
-    Min = 16,
-    Max = 200,
-    Value = 50,
-    Callback = function(v)
-        SpeedValue = v
-    end
-})
-
-local HighJumpOn = false
-local JumpValue = 100
-Movement:Toggle({
-    Name = "HighJump",
-    Flag = "HighJump",
-    Callback = function(state)
-        HighJumpOn = state
-    end
-})
-Movement:Slider({
-    Name = "JumpPower",
-    Flag = "JumpValue",
-    Min = 50,
-    Max = 500,
-    Value = 100,
-    Callback = function(v)
-        JumpValue = v
-    end
-})
+Movement:Item("toggle", "SpeedHack", function(v) FLAGS.SpeedHack = v end)
+Movement:Item("slider", "Speed", function(v) FLAGS.SpeedValue = v end, {min = 16, max = 200, default = FLAGS.SpeedValue})
+Movement:Item("toggle", "HighJump", function(v) FLAGS.HighJump = v end)
+Movement:Item("slider", "JumpPower", function(v) FLAGS.JumpValue = v end, {min = 50, max = 500, default = FLAGS.JumpValue})
 
 -------------------------------------------------
 -- 🧠 Script Logic
@@ -150,9 +74,9 @@ fovCircle.Color = Color3.fromRGB(0, 255, 0)
 fovCircle.Thickness = 1
 fovCircle.NumSides = 100
 fovCircle.Filled = false
-fovCircle.Radius = FOVSize
+fovCircle.Radius = FLAGS.POV_FOV
 
--- Hàm tìm target gần nhất
+-- Tìm target gần nhất trong FOV
 local function getClosestToCursor()
     local closest, dist = nil, math.huge
     for _, plr in pairs(Players:GetPlayers()) do
@@ -160,7 +84,7 @@ local function getClosestToCursor()
             local pos, onscreen = Camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position)
             if onscreen then
                 local mag = (Vector2.new(pos.X, pos.Y) - UserInputService:GetMouseLocation()).Magnitude
-                if mag < dist and mag <= FOVSize then
+                if mag < dist and mag <= FLAGS.POV_FOV then
                     closest, dist = plr, mag
                 end
             end
@@ -180,76 +104,64 @@ local function applyESP(player)
     end
 end
 
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(function()
+        task.wait(1)
+        if FLAGS.ESP then applyESP(plr) end
+    end)
+end)
+
 -------------------------------------------------
 -- 🔄 Main Loop
 -------------------------------------------------
 RunService.RenderStepped:Connect(function()
     -- ESP
-    if ESPOn then
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer then
-                applyESP(plr)
-            end
-        end
-    else
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr.Character and plr.Character:FindFirstChild("ESP_Highlight") then
-                plr.Character:FindFirstChild("ESP_Highlight"):Destroy()
-            end
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and FLAGS.ESP then
+            applyESP(plr)
+        elseif plr.Character and plr.Character:FindFirstChild("ESP_Highlight") and not FLAGS.ESP then
+            plr.Character:FindFirstChild("ESP_Highlight"):Destroy()
         end
     end
 
     -- Speed + Jump
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        hum.WalkSpeed = SpeedHackOn and SpeedValue or 16
-        hum.JumpPower = HighJumpOn and JumpValue or 50
+        hum.WalkSpeed = FLAGS.SpeedHack and FLAGS.SpeedValue or 16
+        hum.JumpPower = FLAGS.HighJump and FLAGS.JumpValue or 50
     end
 
     -- Aimlock
-    if AimlockOn then
+    if FLAGS.Aim_Enabled then
         local target = getClosestToCursor()
         if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character.HumanoidRootPart.Position)
         end
     end
 
-    -- TriggerBot
-    if TriggerBotOn then
-        local target = getClosestToCursor()
-        if target then
-            mouse1press()
-            task.wait()
-            mouse1release()
-        end
-    end
-
-    -- FastReload
-    if FastReloadOn and LocalPlayer.Character then
-        for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
-            if tool:IsA("Tool") and tool:FindFirstChild("Ammo") then
-                tool.Ammo.Value = tool.Ammo.MaxValue
-            end
-        end
-    end
-
-    -- AutoReload
-    if AutoReloadOn and LocalPlayer.Character then
-        for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
-            if tool:IsA("Tool") and tool:FindFirstChild("Ammo") and tool.Ammo.Value <= 0 then
-                tool.Ammo.Value = tool.Ammo.MaxValue
-            end
-        end
-    end
-
-    -- Godmode
-    if GodmodeOn and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").Health =
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").MaxHealth
-    end
-
-    -- FOV Circle update
-    fovCircle.Visible = ShowFOV
+    -- FOV Circle
+    fovCircle.Visible = FLAGS.POV_Circle
     fovCircle.Position = UserInputService:GetMouseLocation()
-    fovCircle.Radius = FOVSize
+    fovCircle.Radius = FLAGS.POV_FOV
+end)
+
+-------------------------------------------------
+-- 🔄 Anti-AFK Handler
+-------------------------------------------------
+LocalPlayer.Idled:Connect(function()
+    if FLAGS.AntiAFK then
+        game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), Camera.CFrame)
+        task.wait(1)
+        game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), Camera.CFrame)
+    end
+end)
+
+-------------------------------------------------
+-- 🔄 UI Toggle Key
+-------------------------------------------------
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == FLAGS.ToggleKey then
+        library:ToggleUI()
+    end
 end)
