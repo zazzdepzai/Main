@@ -11,12 +11,12 @@ local MiscTab = Main:Tab("Misc") -- 🆕 Tab Misc
 -------------------------------------------------
 local FLAGS = {
     -- Combat
-    Aim_Enabled = false,
+    Aim_Enabled = true,
     Aim_Smooth = 0.18,
-    Trigger_Enabled = false,
-    FR_Enabled = false,
-    AutoReload = false,
-    Godmode = false,
+    Trigger_Enabled = true,
+    FR_Enabled = true,
+    AutoReload = true,
+    Godmode = true,
     -- Visuals
     ESP = false,
     POV_Circle = false,
@@ -165,3 +165,4 @@ UserInputService.InputBegan:Connect(function(input, gp)
         library:ToggleUI()
     end
 end)
+
